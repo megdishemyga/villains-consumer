@@ -1,0 +1,40 @@
+server:
+  port: 9001
+spring:
+  data:
+    mongodb:
+      database: ${database.name}
+      uri: ${database.protocol}${database.username}${database.user_password_seperator}${database.password}${database.host_seperator}${database.host}/${database.auth_db}${database.params_seperator}${database.cnx_params}
+      authentication-database:
+      auto-index-creation: true
+  kafka:
+    consumer:
+      bootstrap-servers: localhost:9092
+      group-id: bat-cave
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: http://localhost:8081
+        compatibility: backward
+    producer:
+      client-id: bat-cave
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: http://localhost:8081
+        specific.avro.reader: true
+
+database:
+  protocol: 'mongodb://'
+  host: localhost:27017
+  name: BAT-CAVE
+  username: myga-dev
+  password: myga-dev
+  auth_db: admin
+  params_seperator:
+  user_password_seperator: ':'
+  seperator_host_port: ':'
+  host_seperator: '@'
+  cnx_params:
