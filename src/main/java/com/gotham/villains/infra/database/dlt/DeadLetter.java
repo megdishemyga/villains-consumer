@@ -1,4 +1,4 @@
-package com.gotham.villains.infra.database.dlq;
+package com.gotham.villains.infra.database.dlt;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,8 +9,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @AllArgsConstructor
-@Document("DlqCollection")
-public class Dlq {
+@Document("deadLetters")
+public class DeadLetter {
     @Id
     private DlqId id;
     private GenericData.Record record;

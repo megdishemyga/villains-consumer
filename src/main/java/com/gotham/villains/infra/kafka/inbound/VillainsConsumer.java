@@ -1,10 +1,8 @@
-package com.gotham.villains.infra.kafka;
+package com.gotham.villains.infra.kafka.inbound;
 
-import com.gotham.v1.VillainEvent;
+import com.gotham.VillainEvent;
 import com.gotham.villains.domain.usecase.VillainDetectedUseCase;
-import com.gotham.villains.domain.vilain.model.Villain;
-import com.gotham.villains.domain.vilain.model.VillainStatus;
-import com.gotham.villains.infra.database.dlq.Dlq;
+import com.gotham.villains.infra.database.dlt.DeadLetter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericData;
@@ -19,38 +17,41 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
+import static com.gotham.villains.infra.kafka.mapper.VillainEventMapper.toDomain;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class VillainsConsumer {
-    private final VillainDetectedUseCase villainDetectedUseCase;
     private final ReactiveMongoOperations operations;
+    private final VillainDetectedUseCase villainDetectedUseCase;
 
     @RetryableTopic(
             dltTopicSuffix = "-errors-dlt",
-            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE,
+            retryTopicSuffix = "-retry-dlt",
+            attempts = "2",
+            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
             dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR)
     @KafkaListener(topics = "villains", groupId = "bat-cave")
     public void consume(ConsumerRecord<String, VillainEvent> consumerRecord) {
         final VillainEvent villainEvent = consumerRecord.value();
-        final String nickName = String.valueOf(villainEvent.getNickname());
-        final String fullName = String.valueOf(villainEvent.getFullName());
-        final String status = villainEvent.getStatus().name();
-        villainDetectedUseCase.process(new Villain(nickName, fullName, VillainStatus.valueOf(status))).subscribe();
+        var villain = toDomain(villainEvent);
+        villainDetectedUseCase.process(villain)
+                .subscribe();
     }
 
     @DltHandler
-    public void listenDlt(ConsumerRecord<String, ? extends GenericData.Record> msg,
+    public void handleDlt(ConsumerRecord<String, ? extends GenericData.Record> msg,
                           @Header(KafkaHeaders.ORIGINAL_TOPIC) String originalTopic,
                           @Header(KafkaHeaders.EXCEPTION_MESSAGE) String exceptionMessage,
                           @Header(KafkaHeaders.ORIGINAL_TIMESTAMP) long timestamp) {
-        final var dlqId = Dlq.DlqId.builder()
+        final var dlqId = DeadLetter.DlqId.builder()
                 .originalTopic(originalTopic)
                 .key(msg.key())
                 .timestamp(timestamp)
                 .exceptionMsg(exceptionMessage)
                 .build();
-        operations.save(new Dlq(dlqId,msg.value())).subscribe();
+        operations.save(new DeadLetter(dlqId,msg.value())).subscribe();
     }
 
 }
