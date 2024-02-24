@@ -77,7 +77,7 @@ class VillainsConsumerTest {
                 .setAge(54)
                 .setStatus(VillainStatus.ACTIVE)
                 .build();
-        kafkaTemplate.send("villains", "GDCPD", villainEvent);
+        kafkaTemplate.send("villains", "GDCPD", villainEvent).join();
         await()
                 .pollInterval(Duration.ofSeconds(2))
                 .atMost(5, TimeUnit.SECONDS)

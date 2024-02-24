@@ -51,7 +51,7 @@ public class VillainsConsumer {
                 .timestamp(timestamp)
                 .exceptionMsg(exceptionMessage)
                 .build();
-        operations.save(new DeadLetter(dlqId,msg.value())).subscribe();
+        operations.save(new DeadLetter(dlqId, msg.value())).subscribe();
     }
 
 }
